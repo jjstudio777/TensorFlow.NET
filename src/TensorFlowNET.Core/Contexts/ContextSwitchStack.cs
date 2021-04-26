@@ -13,8 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 ******************************************************************************/
+#define MULTI_THREAD_RUN
 
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Tensorflow.Contexts
 {
@@ -23,11 +25,25 @@ namespace Tensorflow.Contexts
     /// </summary>
     public class ContextSwitchStack
     {
+#if MULTI_THREAD_RUN
+        ConcurrentDictionary<int, Stack<ContextSwitch>> stack_per_thread = new ConcurrentDictionary<int, Stack<ContextSwitch>>();
+        Stack<ContextSwitch> stack
+        {
+            get
+            {
+                return stack_per_thread.GetOrAdd(System.Threading.Thread.CurrentThread.ManagedThreadId, new Stack<ContextSwitch>());
+            }
+        }
+#else
         Stack<ContextSwitch> stack;
+#endif
 
         public ContextSwitchStack(bool isEager, bool isFunc)
         {
+#if MULTI_THREAD_RUN
+#else
             stack = new Stack<ContextSwitch>();
+#endif
             Push(isEager, isFunc);
         }
 

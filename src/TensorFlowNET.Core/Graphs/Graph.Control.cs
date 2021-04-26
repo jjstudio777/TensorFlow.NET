@@ -13,12 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 ******************************************************************************/
+#define MULTI_THREAD_RUN
 
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Tensorflow.Operations;
 using static Tensorflow.Binding;
+using System.Collections.Concurrent;
 
 namespace Tensorflow
 {
@@ -28,7 +30,29 @@ namespace Tensorflow
         public ControlFlowContext _control_flow_context;
 
         // represents the nested with(...) statements
+#if MULTI_THREAD_RUN
+        ConcurrentDictionary<int, List<_ControlDependenciesController>> _control_dependencies_stack_per_thread = new ConcurrentDictionary<int, List<_ControlDependenciesController>>();
+        public List<_ControlDependenciesController> _control_dependencies_stack
+        {
+            get
+            {
+                return _control_dependencies_stack_per_thread.GetOrAdd(
+                    System.Threading.Thread.CurrentThread.ManagedThreadId,
+                    new List<_ControlDependenciesController>()
+                    );
+            }
+            set
+            {
+                _control_dependencies_stack_per_thread.AddOrUpdate(
+                    System.Threading.Thread.CurrentThread.ManagedThreadId,
+                    value,
+                    (k, v) => value
+                    );
+            }
+        }
+#else
         public List<_ControlDependenciesController> _control_dependencies_stack { get; set; } = new List<_ControlDependenciesController>();
+#endif
 
         /// <summary>
         /// For an op that takes `input_ops` as inputs, compute control inputs.

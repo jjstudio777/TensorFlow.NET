@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 ******************************************************************************/
+#define MULTI_THREAD_RUN
 
 using System.Collections.Generic;
 using Serilog;
@@ -20,6 +21,7 @@ using Serilog.Core;
 using Tensorflow.Contexts;
 using Tensorflow.Eager;
 using Tensorflow.Gradients;
+using System.Collections.Concurrent;
 
 namespace Tensorflow
 {
@@ -107,6 +109,13 @@ namespace Tensorflow
             return new Session(null, config).as_default();
         }
 
+#if MULTI_THREAD_RUN
+        ConcurrentDictionary<int, List<ITape>> tape_set_per_thread = new ConcurrentDictionary<int, List<ITape>>();
+        public List<ITape> GetTapeSet()
+        {
+            return tape_set_per_thread.GetOrAdd(System.Threading.Thread.CurrentThread.ManagedThreadId, new List<ITape>());
+        }
+#else
         List<ITape> tape_set;
         public List<ITape> GetTapeSet()
         {
@@ -117,6 +126,7 @@ namespace Tensorflow
 
             return tape_set;
         }
+#endif
 
         public void __init__()
         {
